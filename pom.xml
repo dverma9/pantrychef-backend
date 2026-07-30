@@ -11,14 +11,19 @@
 	<groupId>com.pantrychef</groupId>
 	<artifactId>pantrychef-backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
+	<name>PantryChef AI Backend</name>
+	<description>Spring Boot REST API for PantryChef AI — a conversational AI cooking companion powered by Gemini AI</description>
+	<url>https://cookwithpantrychef-ai.vercel.app</url>
 	<licenses>
-		<license/>
+		<license>
+			<name>MIT License</name>
+			<url>https://opensource.org/licenses/MIT</url>
+		</license>
 	</licenses>
 	<developers>
-		<developer/>
+		<developer>
+			<name>Deepika Verma</name>
+		</developer>
 	</developers>
 	<scm>
 		<connection/>
