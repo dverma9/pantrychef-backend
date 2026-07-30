@@ -19,6 +19,8 @@ import java.util.*;
 @Slf4j
 public class ClaudeService {
 
+    private static final int MAX_HISTORY = 20;
+
     private final RestTemplate restTemplate;
     private final IngredientRepository ingredientRepository;
     private final PreferenceRepository preferenceRepository;
@@ -30,8 +32,15 @@ public class ClaudeService {
     private String geminiApiUrl;
 
     public String chat(String userMessage, List<ConversationMessage> history) {
+        // Null-safe guard
+        if (userMessage == null || userMessage.isBlank()) {
+            throw new IllegalArgumentException("Message cannot be empty.");
+        }
+
         try {
             List<Ingredient> pantry = ingredientRepository.findAll();
+            if (pantry == null) pantry = Collections.emptyList();
+
             UserPreference prefs = preferenceRepository.findFirstBy()
                     .orElse(new UserPreference());
 
@@ -46,12 +55,16 @@ public class ClaudeService {
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
-            log.info("Calling Gemini API at: {}", geminiApiUrl);
+            log.info("Calling Gemini API — pantry size: {}, history size: {}",
+                    pantry.size(), history != null ? history.size() : 0);
+
             ResponseEntity<Map> response = restTemplate.exchange(
                     geminiApiUrl, HttpMethod.POST, request, Map.class);
 
             return parseGeminiResponse(response.getBody());
 
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Gemini API error: {}", e.getMessage());
             throw new RuntimeException("AI service temporarily unavailable. Please try again.");
@@ -80,13 +93,21 @@ public class ClaudeService {
     @SuppressWarnings("unchecked")
     private String parseGeminiResponse(Map responseBody) {
         try {
+            if (responseBody == null) {
+                throw new RuntimeException("Empty response from AI service.");
+            }
             List<Map<String, Object>> candidates =
                     (List<Map<String, Object>>) responseBody.get("candidates");
+            if (candidates == null || candidates.isEmpty()) {
+                throw new RuntimeException("No candidates in AI response.");
+            }
             Map<String, Object> content =
                     (Map<String, Object>) candidates.get(0).get("content");
             List<Map<String, Object>> parts =
                     (List<Map<String, Object>>) content.get("parts");
             return parts.get(0).get("text").toString();
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Error parsing Gemini response: {}", responseBody);
             throw new RuntimeException("Failed to parse AI response.");
@@ -99,9 +120,11 @@ public class ClaudeService {
         sb.append(systemPrompt).append("\n\n");
 
         if (history != null && !history.isEmpty()) {
-            int start = Math.max(0, history.size() - 10);
+            // Cap history at MAX_HISTORY messages to avoid token overflow
+            int start = Math.max(0, history.size() - MAX_HISTORY);
             for (int i = start; i < history.size(); i++) {
                 ConversationMessage msg = history.get(i);
+                if (msg == null || msg.getContent() == null) continue;
                 if ("user".equals(msg.getRole())) {
                     sb.append("User: ").append(msg.getContent()).append("\n");
                 } else {
@@ -122,10 +145,11 @@ public class ClaudeService {
         sb.append("Always respond directly without prefixing with 'PantryChef:'.\n\n");
 
         sb.append("=== USER'S PANTRY ===\n");
-        if (pantry.isEmpty()) {
+        if (pantry == null || pantry.isEmpty()) {
             sb.append("The pantry is currently empty. Ask the user to add ingredients first.\n");
         } else {
             pantry.forEach(i -> {
+                if (i == null || i.getName() == null) return;
                 sb.append("- ").append(i.getName());
                 if (i.getQuantity() != null && !i.getQuantity().isBlank())
                     sb.append(": ").append(i.getQuantity());

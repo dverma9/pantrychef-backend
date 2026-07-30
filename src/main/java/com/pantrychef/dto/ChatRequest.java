@@ -1,18 +1,17 @@
 package com.pantrychef.dto;
 
+import com.pantrychef.dto.ConversationMessage;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class ChatRequest {
 
-    @NotBlank(message = "Message cannot be blank")
+    @NotBlank(message = "Message cannot be blank.")
+    @Size(max = 2000, message = "Message is too long.")
     private String message;
 
     private List<ConversationMessage> conversationHistory;
